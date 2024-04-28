@@ -1,6 +1,6 @@
 key words:
 
-> useLoaderData; createBrowserRouter; RouterProvider; useParams
+> useLoaderData; createBrowserRouter; RouterProvider; Router = router useParams
 
 ### step one:
 
