@@ -54,3 +54,37 @@ config tailwindcss
 }
 
 Video : Styling Text
+
+ private void createThirdResource(TenantDo tenantDo) {
+        List<TenantClusterRefInfo> tenantClusterRefInfoList =
+            tenantClusterReferenceService.selectK8sClusterByTenantId(tenantDo.getId());
+        // 排序，为得是先处理训练集群
+        List<TenantClusterRefInfo> sortResult = new ArrayList<>(tenantClusterRefInfoList);
+        sortResult.sort(Comparator.comparing(t -> BusinessTypeEnum.getOrderByValue(t.getBusinessType())));
+        Map<String, Boolean> hasHandler = new HashMap<>(sortResult.size());
+        for (TenantClusterRefInfo tenantClusterRefInfo : sortResult) {
+            // 创建K8s profile，resourceQuota
+            ApiClient apiClient = ClusterClientUtils.buildApiClient(tenantClusterRefInfo);
+            if (BusinessTypeEnum.TRAINING.getValue().equals(tenantClusterRefInfo.getBusinessType())) {
+                profileKubeAdapter.createProfile(tenantDo.getCode(), apiClient);
+                authorizationPolicyKubeAdapter.createAuthorizationPolicy(tenantDo.getCode(), apiClient);
+                profileKubeAdapter.createClusterRoleBinding(tenantDo.getCode(), apiClient);
+            } else {
+                // 创建 namespace
+                namespaceKubeAdapter.createNamespace(tenantDo.getCode(), apiClient);
+            }
+            if (!hasHandler.containsKey(tenantClusterRefInfo.getK8sGatewayServer())) {
+                // 微调业务不需要资源配额
+                if (BusinessTypeEnum.getSftValue().contains(tenantClusterRefInfo.getBusinessType())) {
+                    continue;
+                }
+                ResourceQuotaReq resourceQuotaReq = buildResourceQuotaReq(tenantClusterRefInfo, tenantDo.getCode());
+                resourceQuotaAdapter.createResourceQuota(resourceQuotaReq, apiClient);
+                hasHandler.put(tenantClusterRefInfo.getK8sGatewayServer(), true);
+            }
+        }
+        HarborProject harborProject = new HarborProject();
+        harborProject.setProjectName(getHarborProjectName(tenantDo.getCode()));
+        harborProject.setNeedPublic(true);
+        harborRestAdapter.createHarborProject(harborProject, buildHarborServerInfo());
+    }
