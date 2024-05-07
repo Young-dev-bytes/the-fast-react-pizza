@@ -462,3 +462,8 @@ elasticjob.jobs.simpleJob.sharding-item-parameters=0=Beijing,1=Shanghai,2=Guangz
 
 ```
 
+    LinkedHashMap<String, List<StudentInfo>> collect = entries.stream().filter(entry -> !entry.getValue().isEmpty())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (oldValue, newValue) -> oldValue, LinkedHashMap::new));
+
+
+
